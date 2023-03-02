@@ -9,13 +9,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        string path;
         if (args.Length == 0)
-        {
-            Console.WriteLine("Usage: ./YABR <path/to/directory> [regexFilter]");
-            return;
-        }
+            path = Directory.GetCurrentDirectory();
+        else
+            path = args[0];
 
-        string path = args[0];
         if (!Directory.Exists(path))
         {
             Console.WriteLine($"Directory {path} was not found. Please provide a valid path.");
