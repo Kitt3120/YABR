@@ -9,32 +9,42 @@ public class Program
 {
     public static void Main(string[] args)
     {
+        //Get path from args or use current working directory by default
         string path;
         if (args.Length == 0)
             path = Directory.GetCurrentDirectory();
         else
             path = args[0];
 
+        //Get regex filter if defined as second arg
+        string? regexFilter = null;
+        if (args.Length > 1)
+            regexFilter = args[1];
+
+
+        //Make sure path exists
         if (!Directory.Exists(path))
         {
             Console.WriteLine($"Directory {path} was not found. Please provide a valid path.");
             return;
         }
 
-        string? regexFilter = null;
-        if (args.Length > 1)
-            regexFilter = args[1];
-
+        //Get possible relative path as full path and get rid of trailing separator chars
+        path = Path.GetFullPath(path);
+        while (path.EndsWith(Path.DirectorySeparatorChar))
+            path = path[..^1];
         string[] files = Directory.GetFiles(path, string.Empty, SearchOption.TopDirectoryOnly)
-                                    .Select(file => file.Replace($"{path}{Path.DirectorySeparatorChar}", string.Empty)
-                                                        .Replace($".{Path.DirectorySeparatorChar}", string.Empty))
+                                    .Select(file => Path.GetFileName(file))
                                     .ToArray();
 
+        //Apply regex filter on file selection if defined
         if (regexFilter is not null)
             files = files.Where(file => Regex.Match(file, regexFilter).Success).ToArray();
 
+        //Order files alphabetically
         files = files.Order().ToArray();
 
+        //Interactive menu for sorting files
         bool isSorting = true;
         while (isSorting)
         {
@@ -163,6 +173,41 @@ public class Program
                 default:
                     break;
             }
+        }
+
+        //Ask for the naming scheme until a valid scheme has been provided
+        string namingScheme = string.Empty;
+        while (!namingScheme.Contains("{i}"))
+        {
+            Console.Write("New file naming scheme (use {i} for index variable): ");
+            namingScheme = Console.ReadLine() ?? string.Empty;
+        }
+
+        //Preview renaming
+        Console.WriteLine("\nPreview renaming:");
+        int longestFileName = files.Max(file => file.Length);
+        for (int i = 0; i < files.Length; i++)
+        {
+            string file = files[i];
+            int nameLengthDifference = longestFileName - file.Length;
+            string remainingSpaces = new string(' ', (int)Math.Round(nameLengthDifference / 5.0) * 5);
+            Console.WriteLine($"{file}{remainingSpaces}\t->\t{namingScheme.Replace("{i}", (i + 1).ToString("00"))}");
+        }
+
+        //Confirm renaming and abort if user wants to cancel
+        Console.Write("Is this correct? [y/N]: ");
+        string confirmation = Console.ReadLine() ?? string.Empty;
+        if (confirmation.ToLower() != "y")
+        {
+            Console.WriteLine("Aborted.");
+            return;
+        }
+
+        //Rename files
+        for (int i = 0; i < files.Length; i++)
+        {
+            string file = files[i];
+            File.Move(path + Path.DirectorySeparatorChar + file, path + Path.DirectorySeparatorChar + namingScheme.Replace("{i}", (i + 1).ToString("00")));
         }
     }
 }
